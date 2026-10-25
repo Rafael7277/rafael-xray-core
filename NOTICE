@@ -1,0 +1,7 @@
+# Notices
+
+This repository contains a fork of Xray-core by XTLS, licensed under the Mozilla Public License 2.0 (MPL-2.0). The upstream source and license notice are preserved under `xray-core/`; a copy of the license is also provided at the repository root.
+
+Rafael's changes add a runtime client IP-limit tracker and dispatcher integration under `xray-core/app/iplimit/` and `xray-core/app/dispatcher/default.go`. These changes remain covered by the source file notices and MPL-2.0. The upstream base commit and source fingerprint are recorded in `xray-fork-version.txt`.
+
+This repository does not grant rights to the Xray name or trademarks. Dependencies retain their own licenses, referenced in `xray-core/go.mod` and the respective upstream repositories.

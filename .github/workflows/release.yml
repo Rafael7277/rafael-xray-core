@@ -1,0 +1,89 @@
+name: Build Rafael Xray Core
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux-amd64:
+    name: Build Linux amd64 Xray
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.2
+          cache-dependency-path: xray-core/go.sum
+          cache: true
+
+      - name: Verify source and build
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_pin="$(sed -n 's/^source_sha256=//p' xray-fork-version.txt)"
+          fork_commit="$(sed -n 's/^fork_base_commit=//p' xray-fork-version.txt)"
+          [[ "${source_pin}" =~ ^[0-9a-f]{64}$ ]]
+          [[ "${fork_commit}" =~ ^[0-9a-f]{40}$ ]]
+          [[ -f xray-core/app/iplimit/tracker.go ]]
+          grep -Fq 'RAFAEL:IPLIMIT' xray-core/app/dispatcher/default.go
+          : > source.manifest
+          while IFS= read -r -d '' file; do
+            relative="${file#xray-core/}"
+            printf '%s  %s\n' "${relative}" "$(sha256sum "${file}" | cut -d' ' -f1)" >> source.manifest
+          done < <(find xray-core -type f ! -path '*/.git/*' -print0 | LC_ALL=C sort -z)
+          actual_source_pin="$(sha256sum source.manifest | awk '{print $1}')"
+          test "${actual_source_pin}" = "${source_pin}"
+
+          export CGO_ENABLED=0 GOOS=linux GOARCH=amd64
+          xray_build_id="rafael-iplimit-${fork_commit:0:7}-${source_pin:0:12}"
+          (cd xray-core && go build -trimpath -buildvcs=false \
+            -ldflags "-s -w -X github.com/xtls/xray-core/core.build=${xray_build_id}" \
+            -o ../rafael-xray-linux-amd64 ./main)
+          chmod 755 rafael-xray-linux-amd64
+          tar -czf rafael-xray-core-source.tar.gz -C xray-core .
+          sha256sum rafael-xray-linux-amd64 > rafael-xray-linux-amd64.sha256
+          sha256sum rafael-xray-core-source.tar.gz > rafael-xray-core-source.tar.gz.sha256
+          mkdir -p release-files
+          cp LICENSE NOTICE xray-fork-version.txt release-files/
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rafael-xray-linux-amd64-${{ github.ref_name }}
+          path: |
+            rafael-xray-linux-amd64
+            rafael-xray-linux-amd64.sha256
+            rafael-xray-core-source.tar.gz
+            rafael-xray-core-source.tar.gz.sha256
+            release-files/LICENSE
+            release-files/NOTICE
+            release-files/xray-fork-version.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish versioned GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Rafael Xray Core ${{ github.ref_name }}
+          generate_release_notes: true
+          prerelease: false
+          files: |
+            rafael-xray-linux-amd64
+            rafael-xray-linux-amd64.sha256
+            rafael-xray-core-source.tar.gz
+            rafael-xray-core-source.tar.gz.sha256
+            LICENSE
+            NOTICE
+            xray-fork-version.txt

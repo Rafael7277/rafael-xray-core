@@ -1,0 +1,6 @@
+# Local release outputs
+/rafael-xray-linux-amd64
+/rafael-xray-linux-amd64.sha256
+/rafael-xray-core-source.tar.gz
+/rafael-xray-core-source.tar.gz.sha256
+/source.manifest
