@@ -16,7 +16,7 @@ The build checks the complete source-tree fingerprint before compiling. Go is pi
 
 ## IP limit integration
 
-The panel writes a strict JSON snapshot to the path supplied by `XRAY_IPLIMIT_FILE`. The fork applies its per-client concurrent IP policy at runtime. Running this Xray binary without `XRAY_IPLIMIT_FILE` leaves the IP-limit hook inactive.
+The panel writes a strict JSON snapshot to the path supplied by `XRAY_IPLIMIT_FILE`. The fork groups multi-link aliases using the shared identity provided by the panel and enforces the strictest positive IP cap across those aliases inside one Xray process. This state is process-local; separate Xray processes do not share live connection state. Running this Xray binary without `XRAY_IPLIMIT_FILE` leaves the IP-limit hook inactive. Traffic coefficients are handled by Rafael Panel and do not change Xray behavior.
 
 ## License
 
